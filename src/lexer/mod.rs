@@ -57,11 +57,18 @@ pub enum Keyword {
     Loop,
     Pool,
     Exit,
-    Eof,
+
     Mod,
     And,
     Or,
     Not,
+
+    Read,
+    Succ,
+    Pred,
+    Chr,
+    Ord,
+    Eof,
 }
 
 impl Keyword {
@@ -90,11 +97,16 @@ impl Keyword {
             "loop" => Some(Keyword::Loop),
             "pool" => Some(Keyword::Pool),
             "exit" => Some(Keyword::Exit),
-            "eof" => Some(Keyword::Eof),
             "mod" => Some(Keyword::Mod),
             "and" => Some(Keyword::And),
             "or" => Some(Keyword::Or),
             "not" => Some(Keyword::Not),
+            "read" => Some(Keyword::Read),
+            "succ" => Some(Keyword::Succ),
+            "pred" => Some(Keyword::Pred),
+            "chr" => Some(Keyword::Chr),
+            "ord" => Some(Keyword::Ord),
+            "eof" => Some(Keyword::Eof),
             _ => None,
         }
     }
@@ -125,12 +137,18 @@ pub enum Token {
 
     Newline,
     Dot,
-    DoubleDot,
+    Dots,
     Colon,
     Semicolon,
     Comma,
     LeftParen,
     RightParen,
+}
+
+impl PartialEq<Token> for &Token {
+    fn eq(&self, other: &Token) -> bool {
+        *self == other
+    }
 }
 
 pub struct Lexer {
@@ -175,7 +193,7 @@ impl Lexer {
         self.start = self.current;
     }
 
-    fn reset(&mut self) {
+    fn rollback(&mut self) {
         self.current = self.start;
     }
 
@@ -280,6 +298,7 @@ impl Lexer {
                         Some(Token::Operator(Operator::Assignment))
                     }
                 } else {
+                    self.rollback();
                     None
                 }
             },
@@ -357,11 +376,11 @@ impl Lexer {
     }
 
     fn whitespace(&mut self) -> Option<Token> {
-        if !self.peek().is_whitespace() {
+        if self.peek() != ' ' && self.peek() != '\t' && self.peek() != '\x0C' && self.peek() != '\x0B' {
             return None
         }
 
-        while self.peek().is_whitespace() && self.peek() != '\n' {
+        while self.peek() == ' ' || self.peek() == '\t' || self.peek() == '\x0C' || self.peek() == '\x0B' {
             self.advance();
         }
 
@@ -395,7 +414,7 @@ impl Lexer {
                 self.advance();
                 if self.peek() == '.' {
                     self.advance();
-                    Some(Token::DoubleDot)
+                    Some(Token::Dots)
                 } else {
                     Some(Token::Dot)
                 }
