@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use std::cell::Cell;
+
 use crate::lexer::{Lexer, Token};
 
 mod test;
@@ -59,7 +60,7 @@ pub struct Var {
 }
 
 pub struct Body {
-    statements: Vec<Statement>
+    statements: Vec<Statement>,
 }
 
 pub enum Statement {
@@ -69,7 +70,12 @@ pub enum Statement {
     If { condition: Expression, then_stmt: Box<Statement>, else_stmt: Option<Box<Statement>> },
     While { condition: Expression, stmt: Box<Statement> },
     Repeat { stmts: Vec<Statement>, condition: Expression },
-    For { for_stat: Option<Assignment>, for_exp: Expression, stmt: Box<Statement> },
+    For {
+        for_init: Option<Assignment>,
+        for_cond: Option<Expression>,
+        for_update: Option<Assignment>,
+        stmt: Box<Statement>,
+    },
     Loop { stmts: Vec<Statement> },
     Case { condition: Expression, case_clauses: Vec<CaseClause>, otherwise_clause: Box<OtherwiseClause> },
     Read { names: Vec<String> },
@@ -102,7 +108,6 @@ pub enum CaseExpression {
 pub enum OtherwiseClause {
     Statement(Statement),
 }
-
 
 
 pub enum Expression {

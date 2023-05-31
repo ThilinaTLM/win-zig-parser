@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use std::any::Any;
 use std::cell::Cell;
 use crate::lexer::{Operator, Token};
 use crate::lexer::Keyword;
@@ -299,9 +298,8 @@ impl Parser {
     // Expression -> Term '=' Term => "=";
     // Expression -> Term '<>' Term => "<>";
     fn expression(&self) -> Expression {
-        let t = self.peek();
         let left = self.term();
-        match t {
+        match self.peek() {
             Token::Operator(Operator::LessEqual) => {
                 self.advance();
                 let right = self.term();
@@ -492,7 +490,7 @@ impl Parser {
                         exprs.push(expr);
                         if self.peek() == Token::Comma {
                             self.advance();
-                        } else if t == Token::RightParen {
+                        } else if self.peek() == Token::RightParen {
                             self.advance();
                             break;
                         } else {
@@ -712,7 +710,23 @@ impl Parser {
             }
             Token::Keyword(Keyword::Repeat) => {
                 self.advance();
-                let stmts = self._statement_list();
+                let mut stmts = Vec::new();
+                loop {
+                    match self.statement() {
+                        Some(stmt) => stmts.push(stmt),
+                        None => break,
+                    }
+                    if self.peek() == Token::Semicolon {
+                        self.advance();
+                        if self.peek() == Token::Keyword(Keyword::Until) {
+                            break;
+                        }
+                    }
+                    if self.peek() == Token::Keyword(Keyword::Until) {
+                        break;
+                    }
+
+                }
                 if self.peek() == Token::Keyword(Keyword::Until) {
                     self.advance();
                     let expr = self.expression();
@@ -725,7 +739,43 @@ impl Parser {
                 }
             }
             Token::Keyword(Keyword::For) => {
-                unimplemented!()
+                self.advance();
+                if self.peek() != Token::LeftParen {
+                    panic!("Expected '('");
+                }
+                self.advance();
+
+                let init = self.assignment();
+                if self.peek() != Token::Semicolon {
+                    panic!("Expected ';'");
+                }
+                self.advance();
+
+                let cond  = if self.peek() == Token::Semicolon {
+                    self.advance();
+                    None
+                } else {
+                    let cond = self.expression();
+                    if self.peek() != Token::Semicolon {
+                        panic!("Expected ';'");
+                    }
+                    self.advance();
+                    Some(cond)
+                };
+
+                let update = self.assignment();
+                if self.peek() != Token::RightParen {
+                    panic!("Expected ')'");
+                }
+
+                self.advance();
+                let stmt = self.statement().expect("Expected statement");
+                Some(Statement::For {
+                    for_init: init,
+                    for_cond: cond,
+                    for_update: update,
+                    stmt: Box::new(stmt),
+                })
             }
             Token::Keyword(Keyword::Loop) => {
                 self.advance();
@@ -844,22 +894,6 @@ impl Parser {
                 expression: expr,
             }
         }
-    }
-
-    // ForStat -> Assignment;
-    // ForStat -> => "<null>";
-    fn for_stat(&mut self) -> Option<Assignment> {
-        self.assignment()
-    }
-
-
-    // ForExp -> Expression;
-    // ForExp -> => "true";
-    fn for_exp(&mut self) -> Option<Expression> {
-        if self.peek() == Token::Semicolon {
-            return None;
-        }
-        Some(self.expression())
     }
 
     // Assignment -> Name ':=' Expression => "assign";
