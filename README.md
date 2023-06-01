@@ -14,7 +14,9 @@ make
 ./winzigc --ast winzig_test_programs/winzig_01
 ```
 
-## Requirements
+## Building & Running Guide
+
+### Requirements
 
 - Rust (recommend 1.67.1 or higher)
 - Cargo (recommend 1.67.1 or higher)
@@ -23,7 +25,7 @@ make
 
 Make sure you have these installed on your machine before proceeding.
 
-## Building From Source
+### Building From Source
 
 1. Clone this repository to your local machine.
     ```bash
@@ -41,7 +43,7 @@ Make sure you have these installed on your machine before proceeding.
     ./target/release/win-zig winzig_test_programs/winzig_01
     ```
 
-## Tests
+### Tests
 
 Run the following command to run the test suite.
 
@@ -49,9 +51,10 @@ Run the following command to run the test suite.
 cargo test
 ```
 
-This will test all the source files provided in `winzig_test` directory.
+This will test all the source files provided in `winzig_test_programs` directory. 
+It will compare generated AST with expected AST provided as a `winzig_xx.tree` file.
 
-## Usage
+### Usage
 
 1. Generate AST
     ```bash
