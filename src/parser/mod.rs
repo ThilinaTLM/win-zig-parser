@@ -4,31 +4,33 @@ use std::cell::Cell;
 
 use crate::lexer::{Token};
 
+
 mod test;
 mod parser;
-mod tree;
+pub mod tree;
 
 pub struct Parser {
     tokens: Vec<Token>,
-    start: Cell<usize>,
     current: Cell<usize>,
+    verbose: bool,
 }
 
 pub struct Program {
-    name: Name,
-    consts: Option<Vec<Const>>,
-    types: Option<Vec<Type>>,
-    dclns: Option<Dclns>,
+    name: Identifier,
+    consts: Consts,
+    types: Types,
+    dclns: Dclns,
     sub_progs: SubProgs,
     body: Body,
+    end_name: Identifier,
 }
 
-pub struct Dclns {
-    dclns: Vec<Var>,
-}
-
-pub struct Name {
+pub struct Identifier {
     name: String,
+}
+
+pub struct Consts {
+    consts: Vec<Const>,
 }
 
 pub struct Const {
@@ -36,19 +38,27 @@ pub struct Const {
     value: ConstValue,
 }
 
+pub struct Dclns {
+    vars: Vec<Var>,
+}
+
+pub struct Types {
+    types: Vec<Type>,
+}
+
 pub enum ConstValue {
     Integer(i64),
     Char(char),
-    Name(String),
+    Name(Identifier),
 }
 
 pub struct Type {
-    name: String,
+    name: Identifier,
     lit_list: LitList,
 }
 
 pub struct LitList {
-    names: Vec<String>,
+    names: Vec<Identifier>,
 }
 
 pub enum Fcn {
@@ -56,8 +66,8 @@ pub enum Fcn {
 }
 
 pub struct Var {
-    names: Vec<String>,
-    typename: String,
+    names: Vec<Identifier>,
+    typename: Identifier,
 }
 
 pub struct Body {
@@ -66,37 +76,46 @@ pub struct Body {
 
 pub enum Statement {
     Assign { assignment: Assignment },
-    Swap { name1: String, name2: String },
     Output { expressions: Vec<OutExp> },
-    If { condition: Expression, then_stmt: Box<Statement>, else_stmt: Option<Box<Statement>> },
-    While { condition: Expression, stmt: Box<Statement> },
-    Repeat { stmts: Vec<Statement>, condition: Expression },
+    If { cond: Expression, then: Box<Statement>, else_stmt: Option<Box<Statement>> },
+    While { cond: Expression, stmt: Box<Statement> },
+    Repeat { stmts: Vec<Statement>, cond: Expression },
     For {
-        for_init: Option<Assignment>,
-        for_cond: Option<Expression>,
-        for_update: Option<Assignment>,
+        init: ForStat,
+        cond: ForExp,
+        update: ForStat,
         stmt: Box<Statement>,
     },
     Loop { stmts: Vec<Statement> },
     Case {
         expr: Expression,
-        case_clauses: Vec<CaseClause>,
-        otherwise_clause: Option<Box<OtherwiseClause>>,
+        cases: Vec<CaseClause>,
+        otherwise: Option<Box<OtherwiseClause>>,
     },
-    Read { names: Vec<String> },
+    Read { names: Vec<Identifier> },
     Exit,
-    Return { expression: Expression },
+    Return { exp: Expression },
     Body { body: Body },
     Null,
 }
 
+pub enum ForStat {
+    Assignment(Assignment),
+    Null,
+}
+
+pub enum ForExp {
+    Expression(Expression),
+    True,
+}
+
 pub enum Assignment {
-    Assignment { name: String, expression: Expression },
-    Swap { name1: String, name2: String },
+    Assignment { name: Identifier, exp: Expression },
+    Swap { name1: Identifier, name2: Identifier },
 }
 
 pub enum OutExp {
-    Integer { expression: Expression },
+    Integer { exp: Expression },
     String { value: String },
 }
 
@@ -145,15 +164,15 @@ pub enum Primary {
     Negate { primary: Box<Primary> },
     Not { primary: Box<Primary> },
     Eof,
-    Name(String),
+    Name(Identifier),
     Integer(i64),
     Char(char),
-    Call { name: String, expressions: Vec<Expression> },
+    Call { name: Identifier, exps: Vec<Expression> },
     Expression(Expression),
-    Succ { expression: Box<Expression> },
-    Pred { expression: Box<Expression> },
-    Chr { expression: Box<Expression> },
-    Ord { expression: Box<Expression> },
+    Succ { exp: Box<Expression> },
+    Pred { exp: Box<Expression> },
+    Chr { exp: Box<Expression> },
+    Ord { exp: Box<Expression> },
 }
 
 pub struct Params {
@@ -161,14 +180,14 @@ pub struct Params {
 }
 
 pub struct Func {
-    name: String,
+    name: Identifier,
     params: Params,
-    return_type: String,
-    consts: Option<Vec<Const>>,
-    types: Option<Vec<Type>>,
-    dclns: Option<Dclns>,
+    return_type: Identifier,
+    consts: Consts,
+    types: Types,
+    dclns: Dclns,
     body: Body,
-    end_name: String,
+    end_name: Identifier,
 }
 
 pub struct SubProgs {

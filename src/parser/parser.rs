@@ -7,7 +7,8 @@ use crate::parser::*;
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Parser {
-        // remove comments and whitespace
+
+        // Filter unnecessary tokens
         let tokens = tokens.into_iter().filter(|t| {
             match t {
                 Token::Comment => false,
@@ -19,8 +20,8 @@ impl Parser {
 
         Parser {
             tokens,
-            start: Cell::new(0),
             current: Cell::new(0),
+            verbose: false,
         }
     }
 
@@ -44,16 +45,10 @@ impl Parser {
         if !self.is_at_end() {
             self.current.set(self.current.get() + 1);
         }
-        println!("{}: {:?} -> {:?}", self.current.get() + 1, self.previous(), self.peek());
+        if self.verbose {
+            println!("{}: {:?} -> {:?}", self.current.get() + 1, self.previous(), self.peek());
+        }
         self.previous()
-    }
-
-    fn commit(&mut self) {
-        self.start.set(self.current.get());
-    }
-
-    fn rollback(&mut self) {
-        self.current.set(self.start.get());
     }
 
     // Winzig -> 'program' Name ':' Consts Types Dclns SubProgs Body Name '.' => "program";
@@ -73,6 +68,14 @@ impl Parser {
             let dclns = self.dclns();
             let sub_progs = self.sub_progs();
             let body = self.body().expect("Expected program body");
+
+            let end_name = self.name().expect("Expected program end name");
+            if self.peek() == Token::Dot {
+                self.advance();
+            } else {
+                panic!("Expected '.'");
+            }
+
             Program {
                 name,
                 consts,
@@ -80,6 +83,7 @@ impl Parser {
                 dclns,
                 sub_progs,
                 body,
+                end_name,
             }
         } else {
             panic!("Expected program");
@@ -87,11 +91,11 @@ impl Parser {
     }
 
     // Name -> '<identifier>';
-    fn name(&mut self) -> Option<Name> {
+    fn name(&self) -> Option<Identifier> {
         let t = self.peek();
         if let Token::Identifier(name) = t {
             self.advance();
-            Some(Name { name: name.clone() })
+            Some(Identifier { name: name.clone() })
         } else {
             None
         }
@@ -99,7 +103,7 @@ impl Parser {
 
     // Consts -> 'const' Const list ',' ';' => "consts";
     // Consts -> => "consts";
-    fn consts(&mut self) -> Option<Vec<Const>> {
+    fn consts(&mut self) -> Consts {
         let t = self.peek();
         if t == Token::Keyword(Keyword::Const) {
             self.advance();
@@ -118,9 +122,13 @@ impl Parser {
                     panic!("Expected ',' or ';'");
                 }
             }
-            Some(consts)
+            Consts {
+                consts
+            }
         } else {
-            None
+            Consts {
+                consts: Vec::new()
+            }
         }
     }
 
@@ -152,8 +160,8 @@ impl Parser {
             self.advance();
             ConstValue::Char(c.clone())
         } else if let Token::Identifier(name) = t {
-            self.advance();
-            ConstValue::Name(name.clone())
+            let name = self.name().expect("Expected const name");
+            ConstValue::Name(name)
         } else {
             panic!("Expected const value");
         }
@@ -161,7 +169,7 @@ impl Parser {
 
     // Types -> 'type' (Type ';')+ => "types";
     // Types -> => "types";
-    fn types(&mut self) -> Option<Vec<Type>> {
+    fn types(&mut self) -> Types {
         let t = self.peek();
         if t == Token::Keyword(Keyword::Type) {
             self.advance();
@@ -180,9 +188,13 @@ impl Parser {
                     None => break,
                 };
             }
-            Some(types)
+            Types {
+                types
+            }
         } else {
-            None
+            Types {
+                types: Vec::new()
+            }
         }
     }
 
@@ -197,7 +209,7 @@ impl Parser {
             self.advance();
             let lit_list = self.lit_list();
             Some(Type {
-                name: name.name,
+                name,
                 lit_list,
             })
         } else {
@@ -213,7 +225,7 @@ impl Parser {
             let mut names = Vec::new();
             loop {
                 let name = self.name().expect("Expected name");
-                names.push(name.name);
+                names.push(name);
                 let t = self.peek();
                 if t == Token::Comma {
                     self.advance();
@@ -232,7 +244,7 @@ impl Parser {
 
     // Dclns -> 'var' (Dcln ';')+ => "dclns";
     // Dclns -> => "dclns";
-    fn dclns(&mut self) -> Option<Dclns> {
+    fn dclns(&mut self) -> Dclns {
         let t = self.peek();
         if t == Token::Keyword(Keyword::Var) {
             self.advance();
@@ -250,11 +262,13 @@ impl Parser {
                     panic!("Expected ';'");
                 }
             }
-            Some(Dclns {
-                dclns,
-            })
+            Dclns {
+                vars: dclns,
+            }
         } else {
-            None
+            Dclns {
+                vars: Vec::new()
+            }
         }
     }
 
@@ -270,7 +284,7 @@ impl Parser {
         let mut names = vec![];
         loop {
             let name = self.name().expect("Expected name");
-            names.push(name.name);
+            names.push(name);
             let t = self.peek();
             if t == Token::Comma {
                 self.advance();
@@ -286,7 +300,7 @@ impl Parser {
         let name = self.name().expect("Expected name");
         Some(Var {
             names,
-            typename: name.name,
+            typename: name,
         })
     }
 
@@ -480,8 +494,8 @@ impl Parser {
                 self.advance();
                 Primary::Eof
             }
-            Token::Identifier(name) => {
-                self.advance();
+            Token::Identifier(_) => {
+                let name = self.name().expect("Expected identifier");
                 if self.peek() == Token::LeftParen {
                     self.advance();
                     let mut exprs = Vec::new();
@@ -498,11 +512,11 @@ impl Parser {
                         }
                     }
                     Primary::Call {
-                        name: name.to_string(),
-                        expressions: exprs,
+                        name,
+                        exps: exprs,
                     }
                 } else {
-                    Primary::Name(name.to_string())
+                    Primary::Name(name)
                 }
             }
             Token::Integer(i) => {
@@ -531,7 +545,7 @@ impl Parser {
                     if self.peek() == Token::RightParen {
                         self.advance();
                         Primary::Succ {
-                            expression: Box::new(expr),
+                            exp: Box::new(expr),
                         }
                     } else {
                         panic!("Expected ')'");
@@ -548,7 +562,7 @@ impl Parser {
                     if self.peek() == Token::RightParen {
                         self.advance();
                         Primary::Pred {
-                            expression: Box::new(expr),
+                            exp: Box::new(expr),
                         }
                     } else {
                         panic!("Expected ')'");
@@ -565,7 +579,7 @@ impl Parser {
                     if self.peek() == Token::RightParen {
                         self.advance();
                         Primary::Chr {
-                            expression: Box::new(expr),
+                            exp: Box::new(expr),
                         }
                     } else {
                         panic!("Expected ')'");
@@ -582,7 +596,7 @@ impl Parser {
                     if self.peek() == Token::RightParen {
                         self.advance();
                         Primary::Ord {
-                            expression: Box::new(expr),
+                            exp: Box::new(expr),
                         }
                     } else {
                         panic!("Expected ')'");
@@ -686,8 +700,8 @@ impl Parser {
                         None
                     };
                     Some(Statement::If {
-                        condition: expr,
-                        then_stmt: Box::new(stmt),
+                        cond: expr,
+                        then: Box::new(stmt),
                         else_stmt: else_stmt.map(Box::new),
                     })
                 } else {
@@ -701,7 +715,7 @@ impl Parser {
                     self.advance();
                     let stmt = self.statement().expect("Expected statement");
                     Some(Statement::While {
-                        condition: expr,
+                        cond: expr,
                         stmt: Box::new(stmt),
                     })
                 } else {
@@ -732,7 +746,7 @@ impl Parser {
                     let expr = self.expression();
                     Some(Statement::Repeat {
                         stmts,
-                        condition: expr,
+                        cond: expr,
                     })
                 } else {
                     panic!("Expected 'until'");
@@ -745,7 +759,10 @@ impl Parser {
                 }
                 self.advance();
 
-                let init = self.assignment();
+                let init = match self.assignment() {
+                    Some(a) => ForStat::Assignment(a),
+                    None => ForStat::Null,
+                };
                 if self.peek() != Token::Semicolon {
                     panic!("Expected ';'");
                 }
@@ -753,17 +770,20 @@ impl Parser {
 
                 let cond  = if self.peek() == Token::Semicolon {
                     self.advance();
-                    None
+                    ForExp::True
                 } else {
                     let cond = self.expression();
                     if self.peek() != Token::Semicolon {
                         panic!("Expected ';'");
                     }
                     self.advance();
-                    Some(cond)
+                    ForExp::Expression(cond)
                 };
 
-                let update = self.assignment();
+                let update = match self.assignment() {
+                    Some(a) => ForStat::Assignment(a),
+                    None => ForStat::Null,
+                };
                 if self.peek() != Token::RightParen {
                     panic!("Expected ')'");
                 }
@@ -771,9 +791,9 @@ impl Parser {
                 self.advance();
                 let stmt = self.statement().expect("Expected statement");
                 Some(Statement::For {
-                    for_init: init,
-                    for_cond: cond,
-                    for_update: update,
+                    init,
+                    cond,
+                    update,
                     stmt: Box::new(stmt),
                 })
             }
@@ -826,8 +846,8 @@ impl Parser {
 
                 Some(Statement::Case {
                     expr,
-                    case_clauses,
-                    otherwise_clause: otherwise_clause.map(Box::new),
+                    cases: case_clauses,
+                    otherwise: otherwise_clause.map(Box::new),
                 })
             }
             Token::Keyword(Keyword::Read) => {
@@ -855,7 +875,7 @@ impl Parser {
                 self.advance();
                 let expr = self.expression();
                 Some(Statement::Return {
-                    expression: expr,
+                    exp: expr,
                 })
             }
             Token::Keyword(Keyword::Begin) => {
@@ -903,11 +923,11 @@ impl Parser {
         stmts
     }
 
-    fn _name_list(&mut self) -> Vec<String> {
+    fn _name_list(&mut self) -> Vec<Identifier> {
         let mut names = Vec::new();
         loop {
             let name = self.name().expect("Expected name");
-            names.push(name.name);
+            names.push(name);
             if self.peek() == Token::Comma {
                 self.advance();
             } else {
@@ -929,7 +949,7 @@ impl Parser {
                 }
             }
             _ => OutExp::Integer{
-                expression: expr,
+                exp: expr,
             }
         }
     }
@@ -937,8 +957,8 @@ impl Parser {
     // Assignment -> Name ':=' Expression => "assign";
     // Assignment -> Name ':=:' Name => "swap";
     fn assignment(&mut self) -> Option<Assignment> {
-        let name = match self.peek() {
-            Token::Identifier(name) => name,
+        let name1 = match self.peek() {
+            Token::Identifier(name) => Identifier { name: name.to_string()},
             _ => return None,
         };
         self.advance();
@@ -947,20 +967,20 @@ impl Parser {
                 self.advance();
                 let expr = self.expression();
                 Some(Assignment::Assignment {
-                    name: name.to_string(),
-                    expression: expr,
+                    name: name1,
+                    exp: expr,
                 })
             }
             Token::Operator(Operator::Swap) => {
                 self.advance();
                 let name2 = match self.peek() {
-                    Token::Identifier(name) => name,
+                    Token::Identifier(name) => Identifier { name: name.to_string()},
                     _ => panic!("Expected identifier"),
                 };
                 self.advance();
                 Some(Assignment::Swap {
-                    name1: name.to_string(),
-                    name2: name2.to_string(),
+                    name1,
+                    name2,
                 })
             }
             _ => panic!("Expected ':=' or ':=:'"),
@@ -1065,14 +1085,14 @@ impl Parser {
         }
         self.advance();
         Some(Func {
-            name: name.name,
+            name,
             params,
-            return_type: return_type.name,
+            return_type,
             consts,
             types,
             dclns,
             body,
-            end_name: end_name.name,
+            end_name,
         })
     }
 }
