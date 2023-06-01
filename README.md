@@ -12,3 +12,48 @@ This tool leverages Rust's efficient and safe systems programming language capab
 [Install Rust & Cargo](https://www.rust-lang.org/tools/install)
 
 Make sure you have these installed on your machine before proceeding.
+
+## Building From Source
+
+1. Clone this repository to your local machine.
+    ```bash
+    git clone https://github.com/ThilinaTLM/win-zig-parser.git
+    cd win-zig-parser
+    ```
+
+2. Build the project using Cargo.
+    ```bash
+    cargo build --release
+    ```
+
+3. Run the executable.
+    ```bash
+    ./target/release/win-zig-parser <path-to-winzig-file>
+    ```
+
+## Usage
+
+1. Generate AST
+    ```bash
+    ./target/release/win-zig-parser <path-to-winzig-file>
+    ```
+
+2. Generate AST with verbose output
+    ```bash
+    ./target/release/win-zig-parser <path-to-winzig-file> --verbose
+    ```
+
+3. Get lexical tokens
+    ```bash
+    ./target/release/win-zig-parser <path-to-winzig-file> --tokens
+    ```
+
+## Tests
+
+Run the following command to run the test suite.
+
+```bash
+cargo test
+```
+
+This will test all the source files provided in `winzig_test` directory.
