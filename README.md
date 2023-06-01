@@ -26,26 +26,9 @@ Make sure you have these installed on your machine before proceeding.
     cargo build --release
     ```
 
-3. Run the executable.
+3. Run the executable with sample WinZig source file.
     ```bash
-    ./target/release/win-zig-parser <path-to-winzig-file>
-    ```
-
-## Usage
-
-1. Generate AST
-    ```bash
-    ./target/release/win-zig-parser <path-to-winzig-file>
-    ```
-
-2. Generate AST with verbose output
-    ```bash
-    ./target/release/win-zig-parser <path-to-winzig-file> --verbose
-    ```
-
-3. Get lexical tokens
-    ```bash
-    ./target/release/win-zig-parser <path-to-winzig-file> --tokens
+    ./target/release/win-zig winzig_test/winzig_01
     ```
 
 ## Tests
@@ -57,3 +40,21 @@ cargo test
 ```
 
 This will test all the source files provided in `winzig_test` directory.
+
+## Usage
+
+1. Generate AST
+    ```bash
+    ./target/release/win-zig <path-to-winzig-file>
+    ```
+
+2. Generate AST with verbose output
+    ```bash
+    ./target/release/win-zig <path-to-winzig-file> --verbose
+    ```
+
+3. Get lexical tokens
+    ```bash
+   ./target/release/win-zig <path-to-winzig-file> --tokens
+    ```
+
