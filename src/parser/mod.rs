@@ -2,10 +2,11 @@
 
 use std::cell::Cell;
 
-use crate::lexer::{Lexer, Token};
+use crate::lexer::{Token};
 
 mod test;
 mod parser;
+mod tree;
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -77,7 +78,11 @@ pub enum Statement {
         stmt: Box<Statement>,
     },
     Loop { stmts: Vec<Statement> },
-    Case { condition: Expression, case_clauses: Vec<CaseClause>, otherwise_clause: Box<OtherwiseClause> },
+    Case {
+        expr: Expression,
+        case_clauses: Vec<CaseClause>,
+        otherwise_clause: Option<Box<OtherwiseClause>>,
+    },
     Read { names: Vec<String> },
     Exit,
     Return { expression: Expression },
@@ -105,8 +110,8 @@ pub enum CaseExpression {
     Range(ConstValue, ConstValue),
 }
 
-pub enum OtherwiseClause {
-    Statement(Statement),
+pub struct OtherwiseClause {
+    stmt: Statement,
 }
 
 

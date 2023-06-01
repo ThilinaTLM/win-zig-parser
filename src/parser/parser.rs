@@ -790,7 +790,45 @@ impl Parser {
                 }
             }
             Token::Keyword(Keyword::Case) => {
-                unimplemented!()
+                // Statement -> 'case' Expression 'of' Caseclauses OtherwiseClause 'end' => "case";
+                self.advance();
+                let expr = self.expression();
+                if self.peek() != Token::Keyword(Keyword::Of) {
+                    panic!("Expected 'of'");
+                }
+                self.advance();
+
+                // case clauses
+                let mut case_clauses = Vec::new();
+                loop {
+                    let clause = self.case_clause();
+                    case_clauses.push(clause);
+                    if self.peek() == Token::Semicolon {
+                        self.advance();
+                    }
+                    if self.peek() == Token::Keyword(Keyword::End) {
+                        break;
+                    }
+                    if self.peek() == Token::Keyword(Keyword::Otherwise) {
+                        break;
+                    }
+                }
+
+                // otherwise clause
+                let otherwise_clause = self.otherwise_clause();
+
+                // end case
+                if self.peek() != Token::Keyword(Keyword::End) {
+                    panic!("Expected 'end'");
+                }
+                self.advance();
+
+
+                Some(Statement::Case {
+                    expr,
+                    case_clauses,
+                    otherwise_clause: otherwise_clause.map(Box::new),
+                })
             }
             Token::Keyword(Keyword::Read) => {
                 self.advance();
@@ -929,21 +967,6 @@ impl Parser {
         }
     }
 
-    // Caseclauses -> (Caseclause ';')+;
-    fn case_clauses(&mut self) -> Vec<CaseClause> {
-        let mut clauses = Vec::new();
-        loop {
-            let clause = self.case_clause();
-            clauses.push(clause);
-            if self.peek() == Token::Semicolon {
-                self.advance();
-            } else {
-                break;
-            }
-        }
-        clauses
-    }
-
     // Caseclause -> CaseExpression list ',' ':' Statement => "case_clause";
     fn case_clause(&mut self) -> CaseClause {
         let mut exprs = Vec::new();
@@ -953,6 +976,7 @@ impl Parser {
             if self.peek() == Token::Comma {
                 self.advance();
             } else if self.peek() == Token::Colon {
+                self.advance();
                 break;
             } else {
                 panic!("Expected ',' or ':'");
@@ -983,7 +1007,10 @@ impl Parser {
     fn otherwise_clause(&mut self) -> Option<OtherwiseClause> {
         if self.peek() == Token::Keyword(Keyword::Otherwise) {
             self.advance();
-            Some(OtherwiseClause::Statement(self.statement().expect("Expected statement")))
+            let stmt = self.statement().expect("Expected statement");
+            Some(OtherwiseClause {
+                stmt,
+            })
         } else {
             None
         }
