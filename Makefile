@@ -4,7 +4,7 @@ all: install_rust build_project copy_bin
 
 install_rust:
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-	source "$HOME/.cargo/env"
+	. "${HOME}/.cargo/env"
 
 build_project:
 	cargo build --release
