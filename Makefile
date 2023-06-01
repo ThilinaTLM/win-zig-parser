@@ -7,7 +7,7 @@ install_rust:
 	. "${HOME}/.cargo/env"
 
 build_project:
-	cargo build --release
+	$HOME/.cargo/bin/cargo build --release
 
 copy_bin:
 	cp ./target/release/win-zig ./winzigc
