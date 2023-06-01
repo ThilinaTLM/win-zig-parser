@@ -36,11 +36,25 @@ impl StringTree for Consts {
 
         tree.push(format!("{}consts({})", ". ".repeat(level), consts_len));
         for const_ in &self.consts {
-            // tree.append(&mut const_.get_string_tree(level + 1));
+            tree.append(&mut const_.get_string_tree(level + 1));
         }
         return tree;
     }
 }
+
+impl StringTree for Const {
+    fn get_string_tree(&self, level: usize) -> Vec<String> {
+        let mut tree = Vec::new();
+
+        let len = 2;
+
+        tree.push(format!("{}const({})", ". ".repeat(level), len));
+        tree.append(&mut self.name.get_string_tree(level + 1));
+        tree.append(&mut self.value.get_string_tree(level + 1));
+        return tree;
+    }
+}
+
 
 impl StringTree for Types {
     fn get_string_tree(&self, level: usize) -> Vec<String> {
@@ -310,7 +324,7 @@ impl StringTree for ConstValue {
             ConstValue::Char(c) => {
                 let len = 1;
                 tree.push(format!("{}<char>({})", ". ".repeat(level), len));
-                tree.push(format!("{}{}(0)", ". ".repeat(level + 1), c));
+                tree.push(format!("{}'{}'(0)", ". ".repeat(level + 1), c));
             }
             ConstValue::Name(name) => {
                 return name.get_string_tree(level);
@@ -474,7 +488,7 @@ impl StringTree for Factor {
             }
             Factor::Divide { left, right } => {
                 let len = 2;
-                tree.push(format!("/({})", len));
+                tree.push(format!("{}/({})", ". ".repeat(level), len));
                 tree.append(&mut left.get_string_tree(level + 1));
                 tree.append(&mut right.get_string_tree(level + 1));
             }
@@ -528,7 +542,7 @@ impl StringTree for Primary {
             Primary::Char(ch) => {
                 let len = 1;
                 tree.push(format!("{}<char>({})", ". ".repeat(level), len));
-                tree.push(format!("{}{}(0)", ". ".repeat(level + 1), ch));
+                tree.push(format!("{}'{}'(0)", ". ".repeat(level + 1), ch));
             }
             Primary::Call { name, exps } => {
                 let len = exps.len() + 1;
@@ -579,7 +593,7 @@ impl StringTree for OutExp {
             OutExp::String { value } => {
                 let len = 1;
                 tree.push(format!("{}<string>({})", ". ".repeat(level), len));
-                tree.push(format!("{}{}(0)", ". ".repeat(level + 1), value));
+                tree.push(format!("{}\"{}\"(0)", ". ".repeat(level + 1), value));
             }
         }
         return tree;

@@ -34,7 +34,7 @@ pub struct Consts {
 }
 
 pub struct Const {
-    name: String,
+    name: Identifier,
     value: ConstValue,
 }
 

@@ -6,7 +6,7 @@ use crate::lexer::Keyword;
 use crate::parser::*;
 
 impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Parser {
+    pub fn new(tokens: Vec<Token>, verbose: bool) -> Parser {
 
         // Filter unnecessary tokens
         let tokens = tokens.into_iter().filter(|t| {
@@ -21,7 +21,7 @@ impl Parser {
         Parser {
             tokens,
             current: Cell::new(0),
-            verbose: false,
+            verbose,
         }
     }
 
@@ -140,7 +140,7 @@ impl Parser {
             self.advance();
             let value = self.const_value();
             Const {
-                name: name.name,
+                name,
                 value,
             }
         } else {
@@ -159,7 +159,7 @@ impl Parser {
         } else if let Token::Char(c) = t {
             self.advance();
             ConstValue::Char(c.clone())
-        } else if let Token::Identifier(name) = t {
+        } else if let Token::Identifier(_) = t {
             let name = self.name().expect("Expected const name");
             ConstValue::Name(name)
         } else {
@@ -631,16 +631,7 @@ impl Parser {
     fn body(&mut self) -> Option<Body> {
         if self.peek() == Token::Keyword(Keyword::Begin) {
             self.advance();
-            let mut statements = Vec::new();
-            loop {
-                let s = self.statement();
-                statements.push(s);
-                if self.peek() == Token::Semicolon {
-                    self.advance();
-                } else {
-                    break;
-                }
-            }
+            let statements = self._statement_list();
             if self.peek() == Token::Keyword(Keyword::End) {
                 self.advance();
                 Some(Body { statements })
@@ -721,18 +712,7 @@ impl Parser {
             }
             Token::Keyword(Keyword::Repeat) => {
                 self.advance();
-                let mut stmts = Vec::new();
-                loop {
-                    let stmt =  self.statement();
-                    stmts.push(stmt);
-
-                    if self.peek() == Token::Semicolon {
-                        self.advance();
-                    } else {
-                        break;
-                    }
-
-                }
+                let stmts = self._statement_list();
                 if self.peek() == Token::Keyword(Keyword::Until) {
                     self.advance();
                     let expr = self.expression();
