@@ -443,7 +443,7 @@ impl StringTree for Term {
             }
             Term::Subtract { left, right } => {
                 let len = 2;
-                tree.push(format!("-({})", len));
+                tree.push(format!("{}-({})", ". ".repeat(level), len));
                 tree.append(&mut left.get_string_tree(level + 1));
                 tree.append(&mut right.get_string_tree(level + 1));
             }

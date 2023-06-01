@@ -633,10 +633,7 @@ impl Parser {
             self.advance();
             let mut statements = Vec::new();
             loop {
-                let s = match self.statement() {
-                    Some(s) => s,
-                    None => break,
-                };
+                let s = self.statement();
                 statements.push(s);
                 if self.peek() == Token::Semicolon {
                     self.advance();
@@ -668,7 +665,7 @@ impl Parser {
     // Statement -> Body;
     // Statement -> Assignment;
     // Statement -> => "<null>";
-    fn statement(&mut self) -> Option<Statement> {
+    fn statement(&mut self) -> Statement {
         match self.peek() {
             Token::Keyword(Keyword::Output) => {
                 self.advance();
@@ -677,9 +674,9 @@ impl Parser {
                     let outexps = self._statement_outexp_list();
                     if self.peek() == Token::RightParen {
                         self.advance();
-                        Some(Statement::Output {
+                        Statement::Output {
                             expressions: outexps,
-                        })
+                        }
                     } else {
                         panic!("Expected ')'");
                     }
@@ -692,18 +689,18 @@ impl Parser {
                 let expr = self.expression();
                 if self.peek() == Token::Keyword(Keyword::Then) {
                     self.advance();
-                    let stmt = self.statement().expect("Expected statement");
+                    let stmt = self.statement();
                     let else_stmt = if self.peek() == Token::Keyword(Keyword::Else) {
                         self.advance();
-                        Some(self.statement().expect("Expected statement"))
+                        Some(self.statement())
                     } else {
                         None
                     };
-                    Some(Statement::If {
+                    Statement::If {
                         cond: expr,
                         then: Box::new(stmt),
                         else_stmt: else_stmt.map(Box::new),
-                    })
+                    }
                 } else {
                     panic!("Expected 'then'");
                 }
@@ -713,11 +710,11 @@ impl Parser {
                 let expr = self.expression();
                 if self.peek() == Token::Keyword(Keyword::Do) {
                     self.advance();
-                    let stmt = self.statement().expect("Expected statement");
-                    Some(Statement::While {
+                    let stmt = self.statement();
+                    Statement::While {
                         cond: expr,
                         stmt: Box::new(stmt),
-                    })
+                    }
                 } else {
                     panic!("Expected 'do'");
                 }
@@ -726,17 +723,12 @@ impl Parser {
                 self.advance();
                 let mut stmts = Vec::new();
                 loop {
-                    match self.statement() {
-                        Some(stmt) => stmts.push(stmt),
-                        None => break,
-                    }
+                    let stmt =  self.statement();
+                    stmts.push(stmt);
+
                     if self.peek() == Token::Semicolon {
                         self.advance();
-                        if self.peek() == Token::Keyword(Keyword::Until) {
-                            break;
-                        }
-                    }
-                    if self.peek() == Token::Keyword(Keyword::Until) {
+                    } else {
                         break;
                     }
 
@@ -744,10 +736,10 @@ impl Parser {
                 if self.peek() == Token::Keyword(Keyword::Until) {
                     self.advance();
                     let expr = self.expression();
-                    Some(Statement::Repeat {
+                    Statement::Repeat {
                         stmts,
                         cond: expr,
-                    })
+                    }
                 } else {
                     panic!("Expected 'until'");
                 }
@@ -789,22 +781,22 @@ impl Parser {
                 }
 
                 self.advance();
-                let stmt = self.statement().expect("Expected statement");
-                Some(Statement::For {
+                let stmt = self.statement();
+                Statement::For {
                     init,
                     cond,
                     update,
                     stmt: Box::new(stmt),
-                })
+                }
             }
             Token::Keyword(Keyword::Loop) => {
                 self.advance();
                 let stmts = self._statement_list();
                 if self.peek() == Token::Keyword(Keyword::Pool) {
                     self.advance();
-                    Some(Statement::Loop {
+                    Statement::Loop {
                         stmts,
-                    })
+                    }
                 } else {
                     panic!("Expected 'pool'");
                 }
@@ -844,11 +836,11 @@ impl Parser {
                 self.advance();
 
 
-                Some(Statement::Case {
+                Statement::Case {
                     expr,
                     cases: case_clauses,
                     otherwise: otherwise_clause.map(Box::new),
-                })
+                }
             }
             Token::Keyword(Keyword::Read) => {
                 self.advance();
@@ -857,9 +849,9 @@ impl Parser {
                     let names = self._name_list();
                     if self.peek() == Token::RightParen {
                         self.advance();
-                        Some(Statement::Read {
+                        Statement::Read {
                             names,
-                        })
+                        }
                     } else {
                         panic!("Expected ')'");
                     }
@@ -869,26 +861,26 @@ impl Parser {
             }
             Token::Keyword(Keyword::Exit) => {
                 self.advance();
-                Some(Statement::Exit)
+                Statement::Exit
             }
             Token::Keyword(Keyword::Return) => {
                 self.advance();
                 let expr = self.expression();
-                Some(Statement::Return {
+                Statement::Return {
                     exp: expr,
-                })
+                }
             }
             Token::Keyword(Keyword::Begin) => {
-                Some(Statement::Body{
+                Statement::Body{
                     body: self.body().expect("Expected body"),
-                })
+                }
             }
             Token::Identifier(_) => {
-                Some(Statement::Assign {
+                Statement::Assign {
                     assignment: self.assignment().expect("Expected assignment"),
-                })
+                }
             }
-            _ => None,
+            _ => Statement::Null,
         }
     }
 
@@ -910,10 +902,7 @@ impl Parser {
         let mut stmts = Vec::new();
         loop {
             let stmt = self.statement();
-            match stmt {
-                Some(stmt) => stmts.push(stmt),
-                None => break,
-            }
+            stmts.push(stmt);
             if self.peek() == Token::Semicolon {
                 self.advance();
             } else {
@@ -1002,7 +991,7 @@ impl Parser {
                 panic!("Expected ',' or ':'");
             }
         }
-        let stmt = self.statement().expect("Expected statement");
+        let stmt = self.statement();
         CaseClause {
             expressions: exprs,
             statement: stmt,
@@ -1027,7 +1016,7 @@ impl Parser {
     fn otherwise_clause(&mut self) -> Option<OtherwiseClause> {
         if self.peek() == Token::Keyword(Keyword::Otherwise) {
             self.advance();
-            let stmt = self.statement().expect("Expected statement");
+            let stmt = self.statement();
             Some(OtherwiseClause {
                 stmt,
             })
