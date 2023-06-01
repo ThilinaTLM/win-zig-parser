@@ -4,6 +4,16 @@ Welcome to the WinZig AST Generator, a tool written in Rust that generates Abstr
 
 This tool leverages Rust's efficient and safe systems programming language capabilities, making the AST generation process reliable and fast.
 
+## Single Command Install, Build & Run
+
+```bash
+make
+```
+
+```bash
+./winzigc --ast winzig_test_programs/winzig_01
+```
+
 ## Requirements
 
 - Rust (recommend 1.67.1 or higher)
@@ -28,7 +38,7 @@ Make sure you have these installed on your machine before proceeding.
 
 3. Run the executable with sample WinZig source file.
     ```bash
-    ./target/release/win-zig winzig_test/winzig_01
+    ./target/release/win-zig winzig_test_programs/winzig_01
     ```
 
 ## Tests
